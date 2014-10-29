@@ -60,6 +60,7 @@ int FlowServer::accept_socket(int sockfd) {
 int FlowServer::start(int port, FlowHandler *handler, int backlog) {
 
 	int sockfd = this->listen_on(port, backlog);
+	LOG_INFO("FlowServer starting listen on:%d", port);
 
 	while (1) { /* main accept() loop */
 		int new_fd = this->accept_socket(sockfd);
