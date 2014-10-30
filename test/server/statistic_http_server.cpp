@@ -103,30 +103,39 @@ Response get_statist_info(Request& request) {
 	return Response(STATUS_OK, root);
 };
 
-Response show(Request& request) {
+Response static_source_handler(Request& request) {
 	Json::Value root;
 	Response res = Response(STATUS_OK, root);
 	std::string uri = request.get_request_uri();
 	uri.replace(0, 1, "");
 
 	LOG_DEBUG("GET replaced uri:%s", uri.c_str());
-	std::fstream fs(uri.c_str());
+
+	std::string file_path = "test/";
+	file_path += uri;
+	std::fstream fs(file_path.c_str());
 	std::stringstream ss;
 	if(fs) {
-		char buffer[4096];
-		bzero(buffer, 4096);
-		fs.read(buffer, 4096);
+		int file_max_size = 500 * 1024;
+		char buffer[file_max_size];
+		bzero(buffer, file_max_size);
+		fs.read(buffer, file_max_size);
 		ss << std::string(buffer);
 	}
 	res.body = ss.str();
-	res.set_head("Content-Type:", "text/html");
+	if(uri.find(".js") != std::string::npos) {
+		res.set_head("Content-Type", "application/javascript");
+	} else {
+		res.set_head("Content-Type", "text/html");
+	}
 
 	return res;
 }
 
 int main() {
 	HttpServer http_server;
-	http_server.add_mapping("/test/get_data", get_statist_info);
-	http_server.add_mapping("/test/show", show);
+	http_server.add_mapping("/get_data", get_statist_info);
+	http_server.add_mapping("/show.html", static_source_handler);
+	http_server.add_mapping("/jscharts.js", static_source_handler);
 	http_server.start(3493);
 }

@@ -31,6 +31,9 @@ int FlowServer::listen_on(int port, int backlog) {
 	my_addr.sin_port = htons(port); /* short, network byte order */
 	my_addr.sin_addr.s_addr = INADDR_ANY; /* auto-fill with my IP */
 
+	int opt = 1;
+	setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+
 	if (bind(sockfd, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)) == -1) {
 		perror("bind");
 		exit(1);

@@ -12,12 +12,14 @@ fileagent:
 	mkdir -p bin/include bin/lib
 	g++  -I dependency/simple_log/include src/agent/file_agent.cpp dependency/simple_log/lib/libsimplelog.a -o bin/file_agent
 	
-test: test/server/flow_server_test.cpp
-	g++ -I dependency/simple_log/include -I bin/include test/server/flow_server_test.cpp bin/lib/libflowserver.a dependency/simple_log/lib/libsimplelog.a -o bin/flow_server_test
+log_flow_server: 
+	g++ -I dependency/simple_log/include -I bin/include test/server/log_flow_server.cpp bin/lib/libflowserver.a dependency/simple_log/lib/libsimplelog.a -o bin/log_flow_server
 	
-test_statistic:
-	g++ -I dependency/simple_log/include -I dependency/hiredis/include -I bin/include test/server/flow_test_statistic.cpp bin/lib/libflowserver.a dependency/simple_log/lib/libsimplelog.a  dependency/hiredis/lib/libhiredis.a -o bin/flow_test_statistic
+statistic_flow_server:
+	g++ -I dependency/simple_log/include -I dependency/hiredis/include -I bin/include test/server/statistic_flow_server.cpp bin/lib/libflowserver.a dependency/simple_log/lib/libsimplelog.a  dependency/hiredis/lib/libhiredis.a -o bin/statistic_flow_server
 
-statistic_server:
-	g++ -I dependency/simple_log/include -I dependency/hiredis/include -I dependency/json-cpp/include -I dependency/simple_server/include -I bin/include test/server/statistic_server.cpp bin/lib/libflowserver.a dependency/simple_server/lib/libsimpleserver.a dependency/simple_log/lib/libsimplelog.a dependency/json-cpp/lib/libjson_libmt.a dependency/hiredis/lib/libhiredis.a -o bin/statistic_server
+statistic_http_server:
+	g++ -I dependency/simple_log/include -I dependency/hiredis/include -I dependency/json-cpp/include -I dependency/simple_server/include -I bin/include test/server/statistic_http_server.cpp bin/lib/libflowserver.a dependency/simple_server/lib/libsimpleserver.a dependency/simple_log/lib/libsimplelog.a dependency/json-cpp/lib/libjson_libmt.a dependency/hiredis/lib/libhiredis.a -o bin/statistic_http_server
 	
+clean:
+	rm -rf bin/*

@@ -2,8 +2,8 @@
 <head>
 
 <title>JSChart</title>
-
-<script type="text/javascript" src="http://www.jscharts.com/script/jscharts.js?v=3.0"></script>
+<meta http-equiv="refresh" content="2">
+<script type="text/javascript" src="jscharts.js"></script>
 
 </head>
 <body>
@@ -11,12 +11,10 @@
 <div id="graph">Loading graph...</div>
 
 <script type="text/javascript">
-	
 	var myChart = new JSChart('graph', 'line');
 	myChart.setDataJSON("get_data");
 	myChart.setSize(800, 300);
 	myChart.draw();
-	
 </script>
 
 </body>
