@@ -25,9 +25,8 @@ std::vector<std::string> get_cmds(std::vector<std::string> &times) {
 		char day_str[80];
 		bzero(day_str, 80);
 		strftime(day_str, 80, "%Y-%m-%d_%H:%M:%S", time_info);
-		std::string cmd("INCRBY ");
+		std::string cmd("get ");
 		cmd += day_str;
-		cmd += " 0";
 		LOG_DEBUG("build redis cmd:%s", cmd.c_str());
 		result.push_back(cmd);
 		times.push_back(std::string(day_str));
@@ -50,10 +49,12 @@ int send_commands(std::vector<std::string> cmds, std::vector<std::string> times,
 			LOG_WARN("redis return error which msg:%s", reply->str);
 			continue;
 		}
+		int pv_value = reply->type == REDIS_REPLY_NIL ? 0 : atoi(reply->str);
+
 		Json::ArrayIndex index = (Json::ArrayIndex) i;
 		json_data[index]["unit"] = times[i];
-		json_data[index]["value"] = reply->integer;
-		LOG_DEBUG("start_time:%s, pv:%d", times[i].c_str(), reply->integer);
+		json_data[index]["value"] = pv_value;
+		LOG_DEBUG("start_time:%s, pv:%d", times[i].c_str(), pv_value);
 
 		if(reply != NULL) {
 			freeReplyObject(reply);
@@ -77,29 +78,6 @@ Response get_statist_info(Request& request) {
 	root["JSChart"]["datasets"][index]["type"] = "line";
 	root["JSChart"]["datasets"][index]["data"] = json_data;
 
-	root["JSChart"]["optionset"][index]["set"] = "setLineColor";
-	root["JSChart"]["optionset"][index]["value"] = "'#8D9386'";
-
-	root["JSChart"]["optionset"][index+1]["set"] = "setLineWidth";
-	root["JSChart"]["optionset"][index+1]["value"] = "2";
-
-	root["JSChart"]["optionset"][index+2]["set"] = "setTitleColor";
-	root["JSChart"]["optionset"][index+2]["value"] = "'#7D7D7D'";
-
-	root["JSChart"]["optionset"][index+3]["set"] = "setAxisColor";
-	root["JSChart"]["optionset"][index+3]["value"] = "'#9F0505'";
-
-	root["JSChart"]["optionset"][index+4]["set"] = "setGridColor";
-	root["JSChart"]["optionset"][index+4]["value"] = "'#a4a4a4'";
-
-	root["JSChart"]["optionset"][index+5]["set"] = "setAxisValuesColor";
-	root["JSChart"]["optionset"][index+5]["value"] = "'#333639'";
-
-	root["JSChart"]["optionset"][index + 6]["set"] = "setAxisNameColor";
-	root["JSChart"]["optionset"][index + 6]["value"] = "'#333639'";
-
-	root["JSChart"]["optionset"][index + 7]["set"] = "setTextPaddingLeft";
-	root["JSChart"]["optionset"][index + 7]["value"] = "0";
 	return Response(STATUS_OK, root);
 };
 
