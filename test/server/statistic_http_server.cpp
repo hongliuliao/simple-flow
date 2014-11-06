@@ -123,11 +123,7 @@ Response static_source_handler(Request& request) {
 		ss << std::string(buffer);
 	}
 	res.body = ss.str();
-	if(uri.find(".js") != std::string::npos) {
-		res.set_head("Content-Type", "application/javascript");
-	} else {
-		res.set_head("Content-Type", "text/html");
-	}
+	res.set_head("Content-Type", "text/html");
 
 	return res;
 }
@@ -136,6 +132,5 @@ int main() {
 	HttpServer http_server;
 	http_server.add_mapping("/get_data", get_statist_info);
 	http_server.add_mapping("/show.html", static_source_handler);
-	http_server.add_mapping("/jscharts.js", static_source_handler);
 	http_server.start(3493);
 }
