@@ -16,7 +16,7 @@ simple_flow 是一个简单的实时流计算框架,由两部分组成,一个是
 
 ## 构建 && 测试
 ```
-  make && make test # 此步骤会生成一个agent和一个测试用的flow_server
+  make && make log_flow_server # 此步骤会生成一个agent和一个测试用的flow_server
   ./bin/log_flow_server # start flow_server to receive flow
   ./bin/fileagent localhost 3491 /tmp/test.log # usage: ./bin/fileagent flow_server_ip flow_server_port file_path
 ```
