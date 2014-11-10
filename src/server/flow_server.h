@@ -11,12 +11,7 @@
 #include "flow_handler.h"
 
 class FlowServer {
-private:
-	int listen_on(int port, int backlog);
 
-	int accept_socket(int sockfd);
-
-	FlowHandler *handler;
 public:
 
 	int start(int port, FlowHandler *handler, int backlog = 10);

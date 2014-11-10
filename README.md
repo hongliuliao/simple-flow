@@ -13,6 +13,7 @@ simple_flow 是一个简单的实时流计算框架,由两部分组成,一个是
 
 ## 依赖
  * [simple_log](https://github.com/hongliuliao/simple_log) 日志组件
+ * [simple_server](https://github.com/hongliuliao/simple_server) use it epoll_socket
 
 ## 构建 && 测试
 ```
@@ -47,4 +48,4 @@ int main() {
 ```
 ## TODO LIST
  * fileagent实现当文件inode变化时,重新读取新文件
- * epoll方式实现 flow_server
+ * ~~epoll方式实现 flow_server~~ 2014-11-10
