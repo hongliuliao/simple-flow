@@ -19,7 +19,7 @@
 #include "epoll_socket.h"
 #include "flow_server.h"
 
-class FlowEpollHandler : public EpollSocketHandler {
+class FlowEpollWatcher : public EpollSocketWatcher {
 public:
 	FlowHandler *handler;
 
@@ -46,11 +46,11 @@ public:
 
 int FlowServer::start(int port, FlowHandler *handler, int backlog) {
 
-	FlowEpollHandler epoll_handler;
-	epoll_handler.handler = handler;
+	FlowEpollWatcher epoll_watcher;
+	epoll_watcher.handler = handler;
 
 	EpollSocket e_socket;
-	e_socket.start_epoll(port, epoll_handler, backlog);
+	e_socket.start_epoll(port, epoll_watcher, backlog);
 
 	return 0;
 }
