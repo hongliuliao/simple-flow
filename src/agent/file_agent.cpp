@@ -14,7 +14,10 @@
 #include <netdb.h>
 #include <string>
 #include <fstream>
+
 #include "simple_log.h"
+
+#include "tcp_client.h"
 
 class FileReader {
 private:
@@ -51,40 +54,20 @@ public:
 
 };
 
-void error(const char *msg)
-{
-    perror(msg);
-    exit(0);
-}
-
-int main(int argc, char *argv[])
-{
-    int sockfd, portno, n;
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
-
+int main(int argc, char *argv[]) {
     if (argc < 4) {
        fprintf(stderr,"usage %s hostname port file_path \n", argv[0]);
        exit(0);
     }
 
-    portno = atoi(argv[2]);
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd < 0) {
-        error("ERROR opening socket");
-    }
-    server = gethostbyname(argv[1]);
-    if (server == NULL) {
-        fprintf(stderr,"ERROR, no such host\n");
-        exit(0);
-    }
-    bzero((char *) &serv_addr, sizeof(serv_addr));
-    serv_addr.sin_family = AF_INET;
-    bcopy((char *)server->h_addr, (char *)&serv_addr.sin_addr.s_addr, server->h_length);
-    serv_addr.sin_port = htons(portno);
+    int sockfd;
+    int portno = atoi(argv[2]);
 
-    if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-        error("ERROR connecting");
+    TcpClient tcp_client;
+    int ret = tcp_client.connect_socket(std::string(argv[1]), portno, sockfd);
+    if(ret != 0) {
+    	LOG_ERROR("connect to server error! which ret:%d", ret);
+    	return -1;
     }
 
     int req_size = 4096;
@@ -101,14 +84,16 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
-		n = write(sockfd, req_buffer, read_size);
+		int n = write(sockfd, req_buffer, read_size);
 		if (n < 0) {
-			 error("ERROR writing to socket");
+			 LOG_ERROR("ERROR writing to socket");
+			 continue;
 		}
 		bzero(res_buffer, res_size);
 		n = read(sockfd, res_buffer, res_size - 1);
 		if (n < 0) {
-			 error("ERROR reading from socket");
+			LOG_ERROR("ERROR reading from socket");
+			continue;
 		}
 		LOG_DEBUG("get info from server:%s", res_buffer);
     }
