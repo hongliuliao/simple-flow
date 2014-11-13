@@ -47,5 +47,5 @@ int main() {
 
 ```
 ## TODO LIST
- * fileagent实现当文件inode变化时,重新读取新文件
+ * ~~fileagent实现当文件inode变化时,重新读取新文件~~ DONE at 2014-11-13 check the newest file in dir when no new data
  * ~~epoll方式实现 flow_server~~ DONE at 2014-11-10 
