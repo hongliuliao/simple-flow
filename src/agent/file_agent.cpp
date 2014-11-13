@@ -59,6 +59,19 @@ public:
 
 };
 
+void reconnect_until_success(TcpClient &tcp_client, std::string host, int portno, int &sockfd) {
+	close(sockfd);
+	while(1) {
+		int ret = tcp_client.connect_socket(host, portno, sockfd);
+		if(ret == 0) {
+			break;
+		}
+		LOG_WARN("connect_socket error which host:%s, portno:%d, ret:%d", host.c_str(), portno, ret);
+		sleep(1);
+	}
+
+}
+
 int main(int argc, char *argv[]) {
     if (argc < 4) {
        fprintf(stderr,"usage %s hostname port file_path \n", argv[0]);
@@ -66,6 +79,7 @@ int main(int argc, char *argv[]) {
     }
 
     int sockfd;
+    std::string host = argv[1];
     int portno = atoi(argv[2]);
     std::string input_path(argv[3]);
 
@@ -106,14 +120,18 @@ int main(int argc, char *argv[]) {
 		int n = write(sockfd, req_buffer, read_size);
 		if (n < 0) {
 			 LOG_ERROR("ERROR writing to socket");
+			 reconnect_until_success(tcp_client, host, portno, sockfd);
 			 continue;
 		}
+
 		bzero(res_buffer, res_size);
 		n = read(sockfd, res_buffer, res_size - 1);
-		if (n < 0) {
+		if (n <= 0) {
 			LOG_ERROR("ERROR reading from socket");
+			reconnect_until_success(tcp_client, host, portno, sockfd);
 			continue;
 		}
+
 		LOG_DEBUG("get info from server:%s", res_buffer);
     }
 
