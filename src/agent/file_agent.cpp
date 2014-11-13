@@ -18,6 +18,7 @@
 #include "simple_log.h"
 
 #include "tcp_client.h"
+#include "file_collector.h"
 
 class FileReader {
 private:
@@ -52,6 +53,10 @@ public:
 		return ret;
 	}
 
+	void set_file_path(std::string file_path) {
+		this->file_path = file_path;
+	}
+
 };
 
 int main(int argc, char *argv[]) {
@@ -62,6 +67,7 @@ int main(int argc, char *argv[]) {
 
     int sockfd;
     int portno = atoi(argv[2]);
+    std::string input_path(argv[3]);
 
     TcpClient tcp_client;
     int ret = tcp_client.connect_socket(std::string(argv[1]), portno, sockfd);
@@ -70,18 +76,31 @@ int main(int argc, char *argv[]) {
     	return -1;
     }
 
+    FileCollector fc;
+    std::string real_file_path;
+    if(fc.get_newest_file(input_path, real_file_path) != 0) {
+    	LOG_ERROR("can not get real_file_path for input_path:%s", input_path.c_str());
+    	return -1;
+    }
+
+    FileReader file_reader(real_file_path);
     int req_size = 4096;
     int res_size = 256;
     char req_buffer[req_size];
     char res_buffer[res_size];
-    FileReader file_reader(argv[3]);
     int read_size = 0;
 
     while(1) {
 		bzero(req_buffer,req_size);
-		if(file_reader.read(req_buffer,req_size, read_size) != 0) {
+		if(file_reader.read(req_buffer, req_size, read_size) != 0) {
 			sleep(1);
-			continue;
+			if(file_reader.read(req_buffer, req_size, read_size) != 0) {
+				// check if has new file
+				if(fc.get_newest_file(input_path, real_file_path) == 0) {
+					file_reader.set_file_path(real_file_path);
+				}
+				continue;
+			}
 		}
 
 		int n = write(sockfd, req_buffer, read_size);
