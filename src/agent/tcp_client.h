@@ -19,11 +19,6 @@ class TcpClient {
 private:
 	int setNonblocking(int fd);
 
-	void error(const char *msg) {
-	    perror(msg);
-	    exit(0);
-	}
-
 public:
 	int connect_socket(std::string ip, int port, int &sockfd);
 

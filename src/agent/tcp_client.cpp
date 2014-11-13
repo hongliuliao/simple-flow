@@ -23,7 +23,7 @@ int TcpClient::connect_socket(std::string ip, int port, int &sockfd) {
 
 	sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	if (sockfd < 0) {
-		error("ERROR opening socket");
+		perror("ERROR opening socket");
 		return -1;
 	}
 	server = gethostbyname(ip.c_str());
@@ -37,7 +37,7 @@ int TcpClient::connect_socket(std::string ip, int port, int &sockfd) {
 	serv_addr.sin_port = htons(port);
 
 	if (connect(sockfd,(struct sockaddr *) &serv_addr,sizeof(serv_addr)) < 0) {
-		error("ERROR connecting");
+		perror("ERROR connecting");
 		return -1;
 	}
 	return 0;
