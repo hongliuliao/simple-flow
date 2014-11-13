@@ -104,23 +104,27 @@ int main(int argc, char *argv[]) {
     char res_buffer[res_size];
     int read_size = 0;
 
+    int retry_status = 0;
     while(1) {
-		bzero(req_buffer,req_size);
-		if(file_reader.read(req_buffer, req_size, read_size) != 0) {
-			sleep(1);
+    	if(!retry_status) {
+    		bzero(req_buffer,req_size);
 			if(file_reader.read(req_buffer, req_size, read_size) != 0) {
-				// check if has new file
-				if(fc.get_newest_file(input_path, real_file_path) == 0) {
-					file_reader.set_file_path(real_file_path);
+				sleep(1);
+				if(file_reader.read(req_buffer, req_size, read_size) != 0) {
+					// check if has new file
+					if(fc.get_newest_file(input_path, real_file_path) == 0) {
+						file_reader.set_file_path(real_file_path);
+					}
+					continue;
 				}
-				continue;
 			}
-		}
+    	}
 
 		int n = write(sockfd, req_buffer, read_size);
 		if (n < 0) {
 			 LOG_ERROR("ERROR writing to socket");
 			 reconnect_until_success(tcp_client, host, portno, sockfd);
+			 retry_status = 1;
 			 continue;
 		}
 
@@ -129,9 +133,11 @@ int main(int argc, char *argv[]) {
 		if (n <= 0) {
 			LOG_ERROR("ERROR reading from socket");
 			reconnect_until_success(tcp_client, host, portno, sockfd);
+			retry_status = 1;
 			continue;
 		}
 
+		retry_status = 0;
 		LOG_DEBUG("get info from server:%s", res_buffer);
     }
 
