@@ -22,7 +22,19 @@ public:
 	RedisReplFlowHandler() {
 		total_size = 0;
 		TcpClient tcp_client;
-		tcp_client.connect_noblock_socket("localhost", 6380, sockfd);
+		int ret = tcp_client.create_socket();
+		if(ret != 0) {
+		    LOG_ERROR("create socket error which ret:%d", ret);
+		    exit(1);
+		    return;
+		}
+		ret = tcp_client.connect_noblock_socket("localhost", 6380);
+		if(ret != 0) {
+            LOG_ERROR("connect_noblock_socket error which ret:%d", ret);
+            exit(1);
+            return;
+        }
+		sockfd = tcp_client.get_sockfd();
 	}
 
 	int do_handle(char *flow_bytes, int size) {

@@ -17,12 +17,18 @@
 
 class TcpClient {
 private:
-	int setNonblocking(int fd);
-
+	int setNonblocking();
+	int _sockfd;
 public:
-	int connect_socket(std::string ip, int port, int &sockfd);
+	int create_socket(timeval *conn_timeout = NULL, timeval *read_timeout = NULL);
 
-	int connect_noblock_socket(std::string ip, int port, int &sockfd);
+	int connect_socket(std::string ip, int port);
+
+	int connect_noblock_socket(std::string ip, int port);
+
+	int& get_sockfd() {
+	    return _sockfd;
+	}
 };
 
 #endif /* TCP_CLIENT_H_ */

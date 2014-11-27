@@ -20,6 +20,9 @@
 #include "tcp_client.h"
 #include "file_collector.h"
 
+timeval conn_timeout = {2, 0};
+timeval read_timeout = {0, 100};
+
 class FileReader {
 private:
 	std::string file_path;
@@ -59,13 +62,19 @@ public:
 
 };
 
-void reconnect_until_success(TcpClient &tcp_client, std::string host, int portno, int &sockfd) {
-	close(sockfd);
+void reconnect_until_success(TcpClient &tcp_client, std::string host, int portno) {
+	close(tcp_client.get_sockfd());
 	while(1) {
-		int ret = tcp_client.connect_socket(host, portno, sockfd);
-		if(ret == 0) {
-			break;
-		}
+	    int ret = tcp_client.create_socket(&conn_timeout, &read_timeout);
+	    if(ret != 0) {
+            LOG_ERROR("create_socket to server error! which ret:%d", ret);
+        } else {
+            ret = tcp_client.connect_socket(host, portno);
+            if(ret == 0) {
+                break;
+            }
+        }
+
 		LOG_WARN("connect_socket error which host:%s, portno:%d, ret:%d", host.c_str(), portno, ret);
 		sleep(1);
 	}
@@ -84,11 +93,17 @@ int main(int argc, char *argv[]) {
     std::string input_path(argv[3]);
 
     TcpClient tcp_client;
-    int ret = tcp_client.connect_socket(std::string(argv[1]), portno, sockfd);
+    int ret = tcp_client.create_socket(&conn_timeout, &read_timeout);
+    if(ret != 0) {
+        LOG_ERROR("create_socket to server error! which ret:%d", ret);
+        return -1;
+    }
+    ret = tcp_client.connect_socket(std::string(argv[1]), portno);
     if(ret != 0) {
     	LOG_ERROR("connect to server error! which ret:%d", ret);
     	return -1;
     }
+    sockfd = tcp_client.get_sockfd();
 
     FileCollector fc;
     std::string real_file_path;
@@ -120,19 +135,19 @@ int main(int argc, char *argv[]) {
 			}
     	}
 
-		int n = write(sockfd, req_buffer, read_size);
+		int n = write(tcp_client.get_sockfd(), req_buffer, read_size);
 		if (n < 0) {
 			 LOG_ERROR("ERROR writing to socket");
-			 reconnect_until_success(tcp_client, host, portno, sockfd);
+			 reconnect_until_success(tcp_client, host, portno);
 			 retry_status = 1;
 			 continue;
 		}
 
 		bzero(res_buffer, res_size);
-		n = read(sockfd, res_buffer, res_size - 1);
+		n = read(tcp_client.get_sockfd(), res_buffer, res_size - 1);
 		if (n <= 0) {
 			LOG_ERROR("ERROR reading from socket");
-			reconnect_until_success(tcp_client, host, portno, sockfd);
+			reconnect_until_success(tcp_client, host, portno);
 			retry_status = 1;
 			continue;
 		}
