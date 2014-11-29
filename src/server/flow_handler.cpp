@@ -18,7 +18,9 @@ std::vector<std::string> LineFlowHandler::split_str(std::string &str, char split
 	while(ss.good()) {
 		std::string temp;
 		std::getline(ss, temp, split_char);
-		result.push_back(temp);
+		if(!temp.empty()) {
+            result.push_back(temp);
+		}
 	}
 
 	return result;
@@ -29,10 +31,12 @@ int LineFlowHandler::handle_lines(std::vector<std::string> lines) {
 }
 
 int LineFlowHandler::do_handle(char *flow_bytes, int size) {
-	std::string flow_str(flow_bytes, size);
+	std::string flow_str;
+	std::string temp_str(flow_bytes, size);
 	if(!part_line.empty()) {
-		flow_str += part_line;
-	}
+        flow_str += part_line;
+    }
+	flow_str += temp_str;
 	std::vector<std::string> lines = split_str(flow_str, '\n');
 
 	if(*(flow_bytes + size - 1) == '\n') {
