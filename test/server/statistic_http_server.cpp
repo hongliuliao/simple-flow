@@ -101,7 +101,8 @@ Response static_source_handler(Request& request) {
 		ss << std::string(buffer);
 	}
 	res.body = ss.str();
-	res.set_head("Content-Type", "text/html");
+	std::string content_type = "text/html";
+	res.set_head("Content-Type", content_type);
 
 	return res;
 }
