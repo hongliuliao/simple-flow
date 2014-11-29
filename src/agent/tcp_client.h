@@ -16,21 +16,24 @@
 #include <netdb.h>
 
 class TcpClient {
-private:
+protected:
 	int setNonblocking();
 	int _sockfd;
+	timeval _conn_timeout;
+	timeval _read_timeout;
 public:
-	int create_socket(timeval *conn_timeout = NULL, timeval *read_timeout = NULL);
 
-	int connect_socket(std::string ip, int port);
+	virtual int create_socket(timeval &conn_timeout, timeval &read_timeout);
 
-	int connect_noblock_socket(std::string ip, int port);
+	virtual int connect_socket(std::string ip, int port);
 
-	int write_bytes(char *buffer, int size);
+	virtual int connect_noblock_socket(std::string ip, int port);
 
-	int read_bytes(char *buffer, int size);
+	virtual int write_bytes(char *buffer, int size);
 
-	int close_socket();
+	virtual int read_bytes(char *buffer, int size);
+
+	virtual int close_socket();
 
 };
 

@@ -8,18 +8,16 @@
 #include "tcp_client.h"
 #include <sys/fcntl.h>
 
-int TcpClient::create_socket(timeval *conn_timeout, timeval *read_timeout) {
+int TcpClient::create_socket(timeval &conn_timeout, timeval &read_timeout) {
     _sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (_sockfd < 0) {
         perror("ERROR opening socket");
         return -1;
     }
-    if(conn_timeout) {
-        setsockopt(_sockfd, SOL_SOCKET, SO_SNDTIMEO, &conn_timeout, sizeof(timeval));
-    }
-    if(read_timeout) {
-        setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(timeval));
-    }
+    _conn_timeout = conn_timeout;
+    setsockopt(_sockfd, SOL_SOCKET, SO_SNDTIMEO, &conn_timeout, sizeof(timeval));
+    _read_timeout = read_timeout;
+    setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(timeval));
     return 0;
 }
 

@@ -27,7 +27,7 @@ timeval read_timeout = {0, 100};
 void reconnect_until_success(TcpClient &tcp_client, std::string host, int portno) {
     tcp_client.close_socket();
 	while(1) {
-	    int ret = tcp_client.create_socket(&conn_timeout, &read_timeout);
+	    int ret = tcp_client.create_socket(conn_timeout, read_timeout);
 	    if(ret != 0) {
             LOG_ERROR("create_socket to server error! which ret:%d", ret);
         } else {
@@ -54,7 +54,7 @@ int main(int argc, char *argv[]) {
     std::string input_path(argv[3]);
 
     TcpClient tcp_client;
-    int ret = tcp_client.create_socket(&conn_timeout, &read_timeout);
+    int ret = tcp_client.create_socket(conn_timeout, read_timeout);
     if(ret != 0) {
         LOG_ERROR("create_socket to server error! which ret:%d", ret);
         return -1;

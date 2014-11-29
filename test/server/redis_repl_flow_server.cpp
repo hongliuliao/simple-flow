@@ -21,7 +21,9 @@ public:
 
 	RedisReplFlowHandler() {
 		total_size = 0;
-		int ret = tcp_client.create_socket();
+		timeval conn_timeout = {2, 0};
+		timeval read_timeout = {0, 100};
+		int ret = tcp_client.create_socket(conn_timeout, read_timeout);
 		if(ret != 0) {
 		    LOG_ERROR("create socket error which ret:%d", ret);
 		    exit(1);
