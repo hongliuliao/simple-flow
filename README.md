@@ -11,41 +11,53 @@ simple_flow 是一个简单的实时流计算框架,通过拉取日志,自己定
 * 继承simple系列的传统,简洁实用
 * 安全,可靠 -- 采用拉模式,对数据源系统依赖,影响小
 
-## 以下信息已过期,近期进行更新
-
 ## 依赖
  * [simple_log](https://github.com/hongliuliao/simple_log) 日志组件
- * [simple_server](https://github.com/hongliuliao/simple_server) use it epoll_socket
 
 ## 构建 && 测试
 ```
-  make && make log_flow_server # 此步骤会生成一个agent和一个测试用的flow_server
-  ./bin/log_flow_server # start flow_server to receive flow
-  ./bin/fileagent localhost 3491 /tmp/test.log # usage: ./bin/fileagent flow_server_ip flow_server_port file_path
+  make && make test # 此步骤会生成一个测试的agent
+  ./bin/file_agent_test $file_path
 ```
 
 ## 代码示例
 ```c++
+/*
+ * file_agent_test.cpp
+ *
+ *  Created on: Nov 29, 2014
+ *      Author: liao
+ */
 #include <fstream>
 #include "simple_log.h"
 #include "flow_handler.h"
 #include "flow_server.h"
+#include "file_agent.h"
 
-class LogFlowHandler : public FlowHandler {
+class LogFlowHandler : public LineFlowHandler {
 
 public:
-	int do_handle(char *flow_bytes, int size) {
-		std::string receive_flow = std::string(flow_bytes, size);
-		LOG_DEBUG("start handle the size:%d, flows %s", size, receive_flow.c_str());
-		return 0;
-	}
+    int handle_lines(std::vector<std::string> lines) {
+        LOG_DEBUG("handle_lines STARTING ...........................");
+        for (unsigned i = 0; i < lines.size(); i++) {
+            LOG_DEBUG("start handle line size:%d, line: %s", lines.size(), lines[i].c_str());
+        }
+        return 0;
+    }
 };
 
-int main() {
-	FlowServer flow_server;
-	flow_server.start(3491, new LogFlowHandler());
-	return 1;
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+       fprintf(stderr,"usage %s file_path \n", argv[0]);
+       exit(0);
+    }
+    LogFlowHandler h;
+    FileAgent fa;
+    fa.set_flow_handler(h);
+    fa.start(argv[1]);
+    return 0;
 }
+
 
 ```
 ## TODO LIST
