@@ -16,7 +16,7 @@ prepare:
 	
 fileagent:
 	mkdir -p bin/include bin/lib
-	g++  -I dependency/simple_log/include src/agent/file_agent.cpp bin/lib/libflowserver.a dependency/simple_log/lib/libsimplelog.a dependency/simple_server/lib/libsimpleserver.a -o bin/file_agent
+	g++  -I dependency/simple_log/include src/agent/file_reader.cpp src/agent/file_agent.cpp bin/lib/libflowserver.a dependency/simple_log/lib/libsimplelog.a dependency/simple_server/lib/libsimpleserver.a -o bin/file_agent
 	
 test : 	log_flow_server statistic_flow_server statistic_http_server redis_repl_flow_server file_collector_test
 

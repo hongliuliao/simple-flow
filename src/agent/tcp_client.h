@@ -26,9 +26,12 @@ public:
 
 	int connect_noblock_socket(std::string ip, int port);
 
-	int& get_sockfd() {
-	    return _sockfd;
-	}
+	int write_bytes(char *buffer, int size);
+
+	int read_bytes(char *buffer, int size);
+
+	int close_socket();
+
 };
 
 #endif /* TCP_CLIENT_H_ */

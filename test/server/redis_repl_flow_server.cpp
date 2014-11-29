@@ -17,11 +17,10 @@ class RedisReplFlowHandler : public FlowHandler {
 
 public:
 	int total_size;
-	int sockfd;
+	TcpClient tcp_client;
 
 	RedisReplFlowHandler() {
 		total_size = 0;
-		TcpClient tcp_client;
 		int ret = tcp_client.create_socket();
 		if(ret != 0) {
 		    LOG_ERROR("create socket error which ret:%d", ret);
@@ -34,20 +33,19 @@ public:
             exit(1);
             return;
         }
-		sockfd = tcp_client.get_sockfd();
 	}
 
 	int do_handle(char *flow_bytes, int size) {
 		total_size += size;
 
-		write(sockfd, flow_bytes, size);
+		tcp_client.write_bytes(flow_bytes, size);
 
 		// read all res
 		int read_size;
 		int buffer_size = 1024;
 		char read_buffer[buffer_size];
 
-		while((read_size = read(sockfd, read_buffer, buffer_size)) > 0) {
+		while((read_size = tcp_client.read_bytes(read_buffer, buffer_size)) > 0) {
 			std::string res(read_buffer, buffer_size);
 			LOG_DEBUG("read res size :%d", read_size);
 		}

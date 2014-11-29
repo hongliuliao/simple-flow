@@ -61,4 +61,14 @@ int TcpClient::connect_noblock_socket(std::string ip, int port) {
 	return 0;
 }
 
+int TcpClient::write_bytes(char *buffer, int size) {
+    return write(_sockfd, buffer, size);
+}
 
+int TcpClient::read_bytes(char *buffer, int size) {
+    return read(_sockfd, buffer, size);
+}
+
+int TcpClient::close_socket() {
+    return close(_sockfd);
+}
