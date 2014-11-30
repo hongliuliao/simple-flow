@@ -9,6 +9,7 @@
 #define FILE_READER_H_
 
 #include <string>
+#include "sys/stat.h"
 
 class FileReader {
 
@@ -17,11 +18,12 @@ public:
 
     int read(char *buffer, int size, int &read_size);
 
-    void set_file_path(std::string file_path);
-private:
-    std::string file_path;
-    int offset;
+    int check_and_reset();
 
+private:
+    std::string _file_path;
+    int _offset;
+    __ino_t _file_ino;
 };
 
 #endif /* FILE_READER_H_ */

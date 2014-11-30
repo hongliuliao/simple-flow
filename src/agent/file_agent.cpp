@@ -47,9 +47,7 @@ void FileAgent::start(char *input_path) {
                 sleep(1);
                 if(file_reader.read(req_buffer, req_size, read_size) != 0) {
                     // check if has new file
-                    if(fc.get_newest_file(input_path, real_file_path) == 0) {
-                        file_reader.set_file_path(real_file_path);
-                    }
+                    file_reader.check_and_reset();
                     continue;
                 }
             }

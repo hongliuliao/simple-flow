@@ -5,37 +5,55 @@
  *      Author: liao
  */
 #include <fstream>
+#include <cerrno>
 #include "simple_log.h"
 #include "file_reader.h"
 
 FileReader::FileReader(std::string file_path) {
-    this->file_path = file_path;
-    offset = 0;
+    this->_file_path = file_path;
+    _offset = 0;
+    _file_ino = 0;
+    struct stat tmp_stat;
+    if(stat(_file_path.c_str(), &tmp_stat) != 0){
+        LOG_WARN("Oops  stats file failed [path:%s][errno:%s]", file_path.c_str(), strerror(errno));
+        _file_ino = tmp_stat.st_ino;
+    }
 }
 
 int FileReader::read(char *buffer, int size, int &read_size) {
-    std::fstream fs(file_path.c_str(), std::fstream::in);
+    std::fstream fs(_file_path.c_str(), std::fstream::in);
     if(!fs) {
-        LOG_WARN("open file failed which path:%s", file_path.c_str());
+        LOG_WARN("open file failed which path:%s", _file_path.c_str());
         return -1;
     }
 
-    fs.seekg(offset, fs.beg);
+    fs.seekg(_offset, fs.beg);
     fs.read(buffer, size);
 
     read_size = fs.gcount();
 
     int ret = 0;
     if(read_size == 0) {
-        LOG_DEBUG("no more new data which offset:%d", offset);
+        LOG_DEBUG("no more new data which offset:%d", _offset);
         ret = 1; // no more new data
     }
 
-    offset += read_size;
+    _offset += read_size;
     fs.close();
     return ret;
 }
 
-void FileReader::set_file_path(std::string file_path) {
-    this->file_path = file_path;
+int FileReader::check_and_reset() {
+    struct stat tmp_stat;
+    if(stat(_file_path.c_str(), &tmp_stat) != 0){
+        LOG_WARN("Oops  stats file failed [path:%s][errno:%s]", _file_path.c_str(), strerror(errno));
+        return -1;
+    }
+    if(tmp_stat.st_ino == _file_ino) {
+        return 0;
+    }
+    LOG_INFO("file change which file_path:%s", _file_path.c_str());
+    _file_ino = tmp_stat.st_ino;
+    _offset = 0;
+    return 0;
 }
