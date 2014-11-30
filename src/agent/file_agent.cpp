@@ -18,7 +18,6 @@
 #include "simple_log.h"
 
 #include "tcp_client.h"
-#include "file_collector.h"
 #include "file_reader.h"
 #include "file_agent.h"
 
@@ -27,14 +26,7 @@ void FileAgent::set_flow_handler(FlowHandler &flow_handler) {
 };
 
 void FileAgent::start(char *input_path) {
-    FileCollector fc;
-    std::string real_file_path;
-    if(fc.get_newest_file(std::string(input_path), real_file_path) != 0) {
-        LOG_ERROR("can not get real_file_path for input_path:%s", input_path);
-        return ;
-    }
-
-    FileReader file_reader(real_file_path);
+    FileReader file_reader(input_path);
     int req_size = 4096;
     char req_buffer[req_size];
     int read_size = 0;

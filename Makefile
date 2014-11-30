@@ -5,7 +5,6 @@ prepare:
 	mkdir -p bin/include bin/lib
 	g++ -c -I dependency/simple_log/include -I src/agent src/agent/tcp_client.cpp -I dependency/simple_server/include -o bin/tcp_client.o
 	g++ -c -I dependency/simple_log/include -I src/agent src/agent/file_reader.cpp -I dependency/simple_server/include -o bin/file_reader.o
-	g++ -c -I dependency/simple_log/include -I src/agent src/agent/file_collector.cpp -I dependency/simple_server/include -o bin/file_collector.o
 	g++ -c -I dependency/simple_log/include -I src/server src/server/flow_server.cpp -I dependency/simple_server/include -o bin/flow_server.o
 	g++ -c -I dependency/simple_log/include -I src/server src/server/flow_handler.cpp -I dependency/simple_server/include -o bin/flow_handler.o
 	g++ -c -I dependency/simple_log/include -I src/server -I src/agent -I src src/agent/file_agent.cpp -I dependency/simple_server/include -o bin/file_agent.o
@@ -20,10 +19,7 @@ fileagent:
 	mkdir -p bin/include bin/lib
 	g++  -I dependency/simple_log/include src/agent/file_reader.cpp src/agent/file_agent.cpp bin/lib/libflowserver.a dependency/simple_log/lib/libsimplelog.a dependency/simple_server/lib/libsimpleserver.a -o bin/file_agent
 	
-test : 	file_agent_test log_flow_server statistic_flow_server statistic_http_server redis_repl_flow_server file_collector_test
-
-file_collector_test:
-	g++ -I src/agent -I dependency/simple_log/include test/agent/file_collector_test.cpp bin/lib/libflowserver.a dependency/simple_log/lib/libsimplelog.a -o bin/file_collector_test
+test : 	file_agent_test log_flow_server statistic_flow_server statistic_http_server redis_repl_flow_server 
 
 file_agent_test:
 	g++ -I dependency/simple_log/include -I bin/include test/agent/file_agent_test.cpp bin/lib/libflowserver.a dependency/simple_server/lib/libsimpleserver.a dependency/simple_log/lib/libsimplelog.a -o bin/file_agent_test
