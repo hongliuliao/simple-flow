@@ -26,18 +26,27 @@ public:
             params["create_time"] = (Json::Int64) now;
 
             std::string result;
-            std::string url = std::string("http://localhost:9200/mytest/accesslog/");
             CURLcode code = CurlUtils::post_json(url, params, result);
             std::cout << "get code:" << code << ",result:" << result << std::endl;
         }
         return 0;
     }
+
+    std::string url;
 };
 
-int main() {
-    LogIndexHandler h;
+int main(int argc, char** argv) {
+    if(argc < 3) {
+        std::cout << "usage: ./log_index [log_file] [es_url]" << std::endl;
+        std::cout << "example: ./log_index /home/liao/programs/nginx/logs/access.log http://localhost:9200/mytest/accesslog/" << std::endl;
+        exit(-1);
+        return -1;
+    }
+    LogIndexHandler handler;
+    handler.url = std::string(argv[2]);
+
     FileAgent fa;
-    fa.set_flow_handler(h);
-    fa.start("/home/liao/programs/nginx/logs/access.log");
+    fa.set_flow_handler(handler);
+    fa.start(argv[1]);
     return 0;
 }

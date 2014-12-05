@@ -35,6 +35,7 @@ void FileAgent::start(char *input_path) {
     while(1) {
         if(!retry_status) {
             bzero(req_buffer,req_size);
+            // TODO change check mode , check (the file change && offset == filesize)
             if(file_reader.read(req_buffer, req_size, read_size) != 0) {
                 sleep(1);
                 if(file_reader.read(req_buffer, req_size, read_size) != 0) {
