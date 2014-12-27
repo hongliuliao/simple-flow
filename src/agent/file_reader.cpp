@@ -16,8 +16,10 @@ FileReader::FileReader(std::string file_path) {
     struct stat tmp_stat;
     if(stat(_file_path.c_str(), &tmp_stat) != 0){
         LOG_WARN("Oops  stats file failed [path:%s][errno:%s]", file_path.c_str(), strerror(errno));
+    } else {
         _file_ino = tmp_stat.st_ino;
     }
+
 }
 
 int FileReader::read(char *buffer, int size, int &read_size) {
@@ -52,7 +54,7 @@ int FileReader::check_and_reset() {
     if(tmp_stat.st_ino == _file_ino) {
         return 0;
     }
-    LOG_INFO("file change which file_path:%s", _file_path.c_str());
+    LOG_INFO("file change which file_path:%s, old ino:%d, new ino:%d", _file_path.c_str(), _file_ino, tmp_stat.st_ino);
     _file_ino = tmp_stat.st_ino;
     _offset = 0;
     return 0;

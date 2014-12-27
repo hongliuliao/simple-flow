@@ -35,6 +35,7 @@ int LineFlowHandler::do_handle(char *flow_bytes, int size) {
 	std::string temp_str(flow_bytes, size);
 	if(!part_line.empty()) {
         flow_str += part_line;
+        part_line.clear();
     }
 	flow_str += temp_str;
 	std::vector<std::string> lines = split_str(flow_str, '\n');
