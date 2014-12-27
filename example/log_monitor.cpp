@@ -17,7 +17,6 @@
 #include "file_agent.h"
 #include "flow_handler.h"
 #include "reg_utils.h"
-#include "stat_http_handler.h"
 #include "json/json.h"
 #include "hiredis/hiredis.h"
 #include "simple_log.h"
@@ -235,7 +234,7 @@ Response static_source_handler(Request& request) {
 
     LOG_DEBUG("GET replaced uri:%s", uri.c_str());
 
-    std::string file_path = "example/";
+    std::string file_path = "html/";
     file_path += uri;
     std::fstream fs(file_path.c_str());
     std::stringstream ss;
