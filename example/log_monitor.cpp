@@ -151,7 +151,7 @@ private:
 
 LogMonitorHandler handler;
 
-Response get_count_statist_info(Request& request) {
+void get_count_statist_info(Request& request, Response &response) {
     std::vector<std::string> times;
     Json::Value root;
     Json::Value json_data;
@@ -187,10 +187,10 @@ Response get_count_statist_info(Request& request) {
     root["JSChart"]["datasets"][index]["type"] = "line";
     root["JSChart"]["datasets"][index]["data"] = json_data;
 
-    return Response(STATUS_OK, root);
+    response.set_body(root);
 };
 
-Response get_time_statist_info(Request& request) {
+void get_time_statist_info(Request& request, Response &response) {
     std::vector<std::string> times;
     Json::Value root;
     Json::Value json_data;
@@ -223,18 +223,17 @@ Response get_time_statist_info(Request& request) {
     root["JSChart"]["datasets"][index]["type"] = "line";
     root["JSChart"]["datasets"][index]["data"] = json_data;
 
-    return Response(STATUS_OK, root);
+    response.set_body(root);
 };
 
-Response static_source_handler(Request& request) {
+void static_source_handler(Request& request, Response &res) {
     Json::Value root;
-    Response res = Response(STATUS_OK, root);
     std::string uri = request.get_request_uri();
     uri.replace(0, 1, "");
 
     LOG_DEBUG("GET replaced uri:%s", uri.c_str());
 
-    std::string file_path = "html/";
+    std::string file_path = "resources/";
     file_path += uri;
     std::fstream fs(file_path.c_str());
     std::stringstream ss;
@@ -247,9 +246,11 @@ Response static_source_handler(Request& request) {
     }
     res.body = ss.str();
     std::string content_type = "text/html";
+    if (uri.find(".js") != uri.npos) {
+        content_type = "text/javascript;charset=UTF-8";
+    }
     res.set_head("Content-Type", content_type);
 
-    return res;
 }
 
 void *start_http_server(void *ptr) {
@@ -259,6 +260,7 @@ void *start_http_server(void *ptr) {
     http_server.add_mapping("/get_count", get_count_statist_info);
     http_server.add_mapping("/get_time", get_time_statist_info);
     http_server.add_mapping("/show.html", static_source_handler);
+    http_server.add_mapping("/jscharts.js", static_source_handler);
     http_server.start(atoi((*configs)["http_port"].c_str()));
 }
 
