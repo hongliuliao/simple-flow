@@ -25,8 +25,8 @@ void FileAgent::set_flow_handler(FlowHandler &flow_handler) {
     _flow_handler = &flow_handler;
 };
 
-void FileAgent::start(char *input_path) {
-    FileReader file_reader(input_path);
+void FileAgent::start(char *input_path, bool is_tail) {
+    FileReader file_reader(input_path, is_tail);
     int req_size = 4096;
     char req_buffer[req_size];
     int read_size = 0;

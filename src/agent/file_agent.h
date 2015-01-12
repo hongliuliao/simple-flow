@@ -14,7 +14,7 @@ class FileAgent {
 public:
     void set_flow_handler(FlowHandler &flow_handler);
 
-    void start(char *input_path);
+    void start(char *input_path, bool is_tail = true);
 private:
     FlowHandler *_flow_handler;
 

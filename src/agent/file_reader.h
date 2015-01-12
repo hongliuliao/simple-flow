@@ -14,7 +14,7 @@
 class FileReader {
 
 public:
-    FileReader(std::string file_path);
+    FileReader(std::string file_path, bool is_tail);
 
     int read(char *buffer, int size, int &read_size);
 
@@ -22,8 +22,9 @@ public:
 
 private:
     std::string _file_path;
-    int _offset;
+    int64_t _offset;
     __ino_t _file_ino;
+    bool is_tail;
 };
 
 #endif /* FILE_READER_H_ */

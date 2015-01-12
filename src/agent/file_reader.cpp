@@ -9,9 +9,15 @@
 #include "simple_log.h"
 #include "file_reader.h"
 
-FileReader::FileReader(std::string file_path) {
+FileReader::FileReader(std::string file_path, bool is_tail) {
     this->_file_path = file_path;
     _offset = 0;
+    if (is_tail) {
+        std::fstream fs(_file_path.c_str(), std::fstream::in);
+        fs.seekg(0, fs.end);
+        _offset = fs.tellg();
+        fs.close();
+    }
     _file_ino = 0;
     struct stat tmp_stat;
     if(stat(_file_path.c_str(), &tmp_stat) != 0){
@@ -36,7 +42,7 @@ int FileReader::read(char *buffer, int size, int &read_size) {
 
     int ret = 0;
     if(read_size == 0) {
-        LOG_DEBUG("no more new data which offset:%d", _offset);
+        LOG_DEBUG("no more new data which offset:%ld", _offset);
         ret = 1; // no more new data
     }
 
