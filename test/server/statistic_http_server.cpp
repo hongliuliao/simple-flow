@@ -65,7 +65,7 @@ int send_commands(std::vector<std::string> cmds, std::vector<std::string> times,
 	return 0;
 }
 
-Response get_statist_info(Request& request) {
+void get_statist_info(Request& request, Response &response) {
 	std::vector<std::string> times;
 	Json::Value root;
 	Json::Value json_data;
@@ -78,12 +78,11 @@ Response get_statist_info(Request& request) {
 	root["JSChart"]["datasets"][index]["type"] = "line";
 	root["JSChart"]["datasets"][index]["data"] = json_data;
 
-	return Response(STATUS_OK, root);
+	response.set_body(root);
 };
 
-Response static_source_handler(Request& request) {
+void static_source_handler(Request& request, Response &res) {
 	Json::Value root;
-	Response res = Response(STATUS_OK, root);
 	std::string uri = request.get_request_uri();
 	uri.replace(0, 1, "");
 
@@ -103,8 +102,6 @@ Response static_source_handler(Request& request) {
 	res.body = ss.str();
 	std::string content_type = "text/html";
 	res.set_head("Content-Type", content_type);
-
-	return res;
 }
 
 int main() {
