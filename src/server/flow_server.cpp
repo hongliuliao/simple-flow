@@ -50,7 +50,7 @@ int FlowServer::start(int port, FlowHandler *handler, int backlog) {
 	epoll_watcher.handler = handler;
 
 	EpollSocket e_socket;
-	e_socket.start_epoll(port, epoll_watcher, backlog);
+	e_socket.start_epoll(port, epoll_watcher, backlog, backlog);
 
 	return 0;
 }
