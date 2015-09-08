@@ -26,12 +26,17 @@ void FileAgent::set_flow_handler(FlowHandler &flow_handler) {
 };
 
 void FileAgent::start(char *input_path, bool is_tail) {
+    this->start_watch(input_path, is_tail);
+}
+
+void FileAgent::start_watch(std::string input_path, bool is_tail) {
     FileReader file_reader(input_path, is_tail);
     int req_size = 4096;
     char req_buffer[req_size];
     int read_size = 0;
 
     int retry_status = 0;
+    int run_time;
     while(1) {
         if(!retry_status) {
             bzero(req_buffer,req_size);
@@ -55,5 +60,8 @@ void FileAgent::start(char *input_path, bool is_tail) {
         }
 
         retry_status = 0;
+        if (_run_time_limit > 0 && ++run_time >= _run_time_limit) {
+            break;
+        }
     }
 }

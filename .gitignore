@@ -3,6 +3,8 @@
 .settings
 Debug
 bin
+tags
+
 # Compiled Object files
 *.slo
 *.lo

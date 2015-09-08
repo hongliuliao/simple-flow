@@ -15,7 +15,7 @@ int TcpClient::create_socket(timeval &conn_timeout, timeval &read_timeout) {
         return -1;
     }
     _conn_timeout = conn_timeout;
-    setsockopt(_sockfd, SOL_SOCKET, SO_SNDTIMEO, &conn_timeout, sizeof(timeval));
+    setsockopt(_sockfd, SOL_SOCKET, SO_SNDTIMEO, &conn_timeout, sizeof(timeval)); // in linux kernel, connect timeout == send timeout
     _read_timeout = read_timeout;
     setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(timeval));
     return 0;

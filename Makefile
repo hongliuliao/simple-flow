@@ -1,6 +1,18 @@
 .PHONY: all test clean example
 
-all: prepare 
+CXX=g++
+CXXFLAGS += -g
+
+DEPS_INCLUDE_PATH=-I dependency/simple_log/include -I dependency/simple_flow/include -I dependency/simple_server/include
+SRC_INCLUDE_PATH=-I src/agent -I src/server
+DEPS_LIB_PATH=dependency/simple_server/lib/libsimpleserver.a dependency/simple_log/lib/libsimplelog.a dependency/json-cpp/lib/libjson_libmt.a
+OUTPUT_INCLUDE_PATH=-I bin/include
+OUTPUT_LIB_PATH=bin/lib/libflowserver.a
+
+agent_objects := $(patsubst %.cpp,%.o,$(wildcard src/agent/*.cpp))
+server_objects := $(patsubst %.cpp,%.o,$(wildcard src/server/*.cpp))
+
+all: libflowserver.a prepare 
 	
 	
 prepare:
@@ -11,12 +23,18 @@ prepare:
 	g++ -c -I dependency/simple_log/include -I src/server src/server/flow_handler.cpp -I dependency/simple_server/include -o bin/flow_handler.o
 	g++ -c -I dependency/simple_log/include -I src/server -I src/agent -I src src/agent/file_agent.cpp -I dependency/simple_server/include -o bin/file_agent.o
 	g++ -c -I dependency/simple_log/include -I src/server -I src/agent -I src src/agent/reg_utils.cpp -I dependency/simple_server/include -o bin/reg_utils.o
-	ar -rcs libflowserver.a bin/*.o
 	
 	cp src/server/*.h bin/include/
 	cp src/agent/*.h bin/include/
 	mv libflowserver.a bin/lib/
 	rm -rf bin/*.o
+
+libflowserver.a : $(agent_objects) $(server_objects)
+	ar -rcs libflowserver.a src/agent/*.o src/server/*.o
+ 
+%.o: %.cpp
+	$(CXX) -c $(CXXFLAGS) $(DEPS_INCLUDE_PATH) $(SRC_INCLUDE_PATH) $< -o $@
+
 	
 fileagent:
 	mkdir -p bin/include bin/lib
@@ -27,6 +45,9 @@ test : 	file_agent_test log_flow_server statistic_flow_server statistic_http_ser
 	
 file_agent_test:
 	g++ -I dependency/simple_log/include -I bin/include test/agent/file_agent_test.cpp bin/lib/libflowserver.a dependency/simple_server/lib/libsimpleserver.a dependency/simple_log/lib/libsimplelog.a -o bin/file_agent_test
+
+flow_utils_test: test/agent/flow_utils_test.cpp
+	$(CXX) $(CXXFLAGS) $(DEPS_INCLUDE_PATH) $(OUTPUT_INCLUDE_PATH) $< $(OUTPUT_LIB_PATH) $(DEPS_LIB_PATH) -lcurl -lz -lssl -lidn -o bin/$@
 
 log_flow_server: 
 	g++ -I dependency/simple_log/include -I bin/include test/server/log_flow_server.cpp bin/lib/libflowserver.a dependency/simple_server/lib/libsimpleserver.a dependency/simple_log/lib/libsimplelog.a -o bin/log_flow_server
