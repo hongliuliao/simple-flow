@@ -10,7 +10,7 @@
 #include "simple_log.h"
 #include "flow_handler.h"
 #include "flow_server.h"
-#include "hiredis/hiredis.h"
+#include "hiredis.h"
 
 class StatisticFlowHandler : public LineFlowHandler {
 

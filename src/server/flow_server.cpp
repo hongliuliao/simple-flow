@@ -27,10 +27,23 @@ public:
 		return 0;
 	};
 
-	virtual int on_readable(EpollContext &epoll_context, char *read_buffer, int buffer_size, int read_size) {
-		handler->do_handle(read_buffer, read_size);
-		return 0;
-	};
+    virtual int on_readable(int &epollfd, epoll_event &event) {
+        EpollContext *epoll_context = (EpollContext *) event.data.ptr;
+        int fd = epoll_context->fd;
+
+        int buffer_size = SS_READ_BUFFER_SIZE;
+        char read_buffer[buffer_size];
+        memset(read_buffer, 0, buffer_size);
+
+        int read_size = recv(fd, read_buffer, buffer_size, 0);
+        if (read_size == -1 && errno == EINTR) {
+            return READ_CONTINUE; 
+        } 
+        if (read_size == -1 /* io err*/|| read_size == 0 /* close */) {
+            return READ_CLOSE;
+        }
+		return handler->do_handle(read_buffer, read_size);
+    }
 
 	virtual int on_writeable(EpollContext &epoll_context) {
 		if (send(epoll_context.fd, "OK", 2, 0) == -1) {
@@ -50,7 +63,11 @@ int FlowServer::start(int port, FlowHandler *handler, int backlog) {
 	epoll_watcher.handler = handler;
 
 	EpollSocket e_socket;
-	e_socket.start_epoll(port, epoll_watcher, backlog, backlog);
+    e_socket.set_port(port);
+    e_socket.set_watcher(&epoll_watcher);
+    e_socket.set_backlog(backlog);
+    e_socket.set_max_events(backlog);
+	e_socket.start_epoll();
 
 	return 0;
 }

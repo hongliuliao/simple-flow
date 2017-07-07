@@ -5,10 +5,11 @@
  *      Author: liao
  */
 #include <vector>
+#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include "json/json.h"
-#include "hiredis/hiredis.h"
+#include "hiredis.h"
 #include "simple_log.h"
 #include "http_server.h"
 
@@ -99,7 +100,7 @@ void static_source_handler(Request& request, Response &res) {
 		fs.read(buffer, file_max_size);
 		ss << std::string(buffer);
 	}
-	res.body = ss.str();
+	res._body = ss.str();
 	std::string content_type = "text/html";
 	res.set_head("Content-Type", content_type);
 }

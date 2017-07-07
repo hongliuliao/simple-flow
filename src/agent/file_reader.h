@@ -9,6 +9,7 @@
 #define FILE_READER_H_
 
 #include <string>
+#include "inttypes.h"
 #include "sys/stat.h"
 
 class FileReader {

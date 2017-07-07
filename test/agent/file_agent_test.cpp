@@ -5,6 +5,7 @@
  *      Author: liao
  */
 #include <fstream>
+#include <cstdlib>
 #include "simple_log.h"
 #include "flow_handler.h"
 #include "flow_server.h"

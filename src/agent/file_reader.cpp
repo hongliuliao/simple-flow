@@ -6,6 +6,7 @@
  */
 #include <fstream>
 #include <cerrno>
+#include <cstring>
 #include "simple_log.h"
 #include "file_reader.h"
 

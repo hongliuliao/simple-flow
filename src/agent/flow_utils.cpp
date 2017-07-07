@@ -5,6 +5,7 @@
  *      Author: liao
  */
 #include <stdio.h>
+#include <cstring>
 #include <unistd.h>
 #include <netdb.h>
 #include <sys/socket.h>

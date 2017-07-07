@@ -5,6 +5,7 @@
  *      Author: liao
  */
 #include <iostream>
+#include <cstdlib>
 #include <fstream>
 #include <unistd.h>
 
