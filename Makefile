@@ -84,3 +84,4 @@ example :
 
 clean:
 	rm -rf bin/*
+	make -C dependency/ehttp clean

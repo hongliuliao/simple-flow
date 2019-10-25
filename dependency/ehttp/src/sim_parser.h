@@ -34,8 +34,19 @@ const static int PARSE_REQ_BODY = 2;
 const static int PARSE_REQ_OVER = 3;
 const static int PARSE_REQ_HEAD_OVER = 4;
 
+const static int PARSE_MULTI_DISPOSITION = 0;
+const static int PARSE_MULTI_CONTENT_TYPE = 1;
+//const static int PARSE_MULTI_DATA = 2;
+const static int PARSE_MULTI_OVER = 3;
+
 const static int NEED_MORE_STATUS = 1;
 const static int PARSE_LEN_REQUIRED = 2;
+const static int PARSE_MULTIPART_ERR = -3;
+
+int ss_on_header_field(http_parser *p, const char *buf, size_t len);
+int ss_on_header_value(http_parser *p, const char *buf, size_t len);
+int ss_on_headers_complete(http_parser *p);
+int ss_on_body(http_parser *p, const char *buf, size_t len);
 
 class RequestParam {
     public:
@@ -50,12 +61,14 @@ class RequestParam {
          * get params by name
          * when params in url like age=1&age=2, it will return [1, 2]
          */
-        void get_params(std::string &name, std::vector<std::string> &params);
+        void get_params(const std::string &name, std::vector<std::string> &params);
 
         /**
          * query_url : name=tom&age=3
          */
         int parse_query_url(std::string &query_url);
+
+        int add_param_pair(const std::string &key, const std::string &value);
     private:
         std::multimap<std::string, std::string> _params;
 };
@@ -91,19 +104,50 @@ class RequestLine {
          */
         int parse_request_url_params();
         
-        
         void set_method(std::string m);
         
         void set_request_url(std::string url);
         
         void append_request_url(std::string p_url);
         
-        void set_http_version(std::string v);
+        void set_http_version(const std::string &v);
     private:
         RequestParam _param;
         std::string _method;       // like GET/POST
         std::string _request_url;  // like /hello?name=aaa
         std::string _http_version; // like HTTP/1.1
+};
+
+class FileItem {
+    public:
+        FileItem();
+        /**
+         * the item is file field or normal field 
+         **/
+        bool is_file();
+        
+        std::string *get_fieldname();
+        // get upload file name
+        std::string *get_filename();
+        // get upload file content type
+        std::string *get_content_type();
+        // get file data or field value
+        std::string *get_data();
+
+        bool get_parse_state();
+        void set_is_file();
+        void set_name(const std::string &name);
+        void set_filename(const std::string &filename);
+        void append_data(const char *c, size_t len);
+        void set_content_type(const char *c, int len);
+        void set_parse_state(int state);
+    private:
+        bool _is_file;
+        bool _parse_state;
+        std::string _content_type;
+        std::string _name;
+        std::string _filename;
+        std::string _data;
 };
 
 class RequestBody {
@@ -118,7 +162,7 @@ class RequestBody {
          */
         std::string get_param(std::string name);
 
-        void get_params(std::string &name, std::vector<std::string> &params);
+        void get_params(const std::string &name, std::vector<std::string> &params);
 
         /**
          * get request body bytes
@@ -126,9 +170,15 @@ class RequestBody {
         std::string *get_raw_string();
 
         RequestParam *get_req_params();
+
+        int parse_multi_params();
+
+        std::vector<FileItem> *get_file_items();
+
     private:
         std::string _raw_string;
         RequestParam _req_params;
+        std::vector<FileItem> _file_items;
 };
 
 class Request {
@@ -144,7 +194,7 @@ class Request {
          */
         std::string get_unescape_param(std::string name);
 
-        void get_params(std::string &name, std::vector<std::string> &params);
+        void get_params(const std::string &name, std::vector<std::string> &params);
 
         std::string get_header(std::string name);
 
@@ -190,13 +240,13 @@ class Request {
 class Response {
     public:
         Response(CodeMsg status_code = STATUS_OK);
-        Response(CodeMsg status_code, Json::Value &body);
+        //Response(CodeMsg status_code, Json::Value &body);
 
-        void set_head(std::string name, std::string &value);
+        void set_head(const std::string &name, const std::string &value);
 
         void set_body(Json::Value &body);
 
-        int gen_response(std::string &http_version, bool is_keepalive);
+        int gen_response(const std::string &http_version, bool is_keepalive);
 
         /**
          * return 0: read part, 1: read over, -1:read error
@@ -226,7 +276,7 @@ class HttpContext {
 
         int get_cost_time();
 
-        void print_access_log(std::string &client_ip);
+        int print_access_log(const std::string &client_ip);
 
         inline void delete_req_res();
 

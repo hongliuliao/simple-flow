@@ -23,6 +23,10 @@ public:
     HttpMethod& operator|(HttpMethod hm);
     std::set<int> *get_codes();
     std::set<std::string> *get_names();
+    /**
+     * the names like "GET, POST"
+     */
+    std::string get_names_str();
 private:
     std::set<int> _codes;
     std::set<std::string> _names;
@@ -30,25 +34,30 @@ private:
 
 static HttpMethod GET_METHOD = HttpMethod(1, "GET");
 static HttpMethod POST_METHOD = HttpMethod(2, "POST");
+static HttpMethod OPTIONS_METHOD = HttpMethod(3, "OPTIONS");
 
 typedef void (*method_handler_ptr)(Request& request, Response &response);
 typedef void (*json_handler_ptr)(Request& request, Json::Value &response);
+
+class HttpJsonHandler {
+    public:
+        virtual ~HttpJsonHandler() {};
+        virtual int action(Request &req, Json::Value &rsp) = 0;
+};
 
 struct Resource {
     HttpMethod method;
     method_handler_ptr handler_ptr;
     json_handler_ptr json_ptr;
+    HttpJsonHandler *jh;
 };
 
 class HttpEpollWatcher : public EpollSocketWatcher {
     private:
-        std::map<std::string, Resource> resource_map;
+        std::map<std::string, Resource> *_resource_map;
     public:
+        HttpEpollWatcher(std::map<std::string, Resource> *resource_map);
         virtual ~HttpEpollWatcher() {}
-
-        void add_mapping(std::string path, method_handler_ptr handler, HttpMethod method = GET_METHOD);
-
-        void add_mapping(std::string path, json_handler_ptr handler, HttpMethod method = GET_METHOD);
 
         int handle_request(Request &request, Response &response);
 
@@ -65,10 +74,20 @@ class HttpEpollWatcher : public EpollSocketWatcher {
 class HttpServer {
     public:
         HttpServer();
+        ~HttpServer();
 
         void add_mapping(std::string path, method_handler_ptr handler, HttpMethod method = GET_METHOD);
 
         void add_mapping(std::string path, json_handler_ptr handler, HttpMethod method = GET_METHOD);
+
+        int add_mapping(const std::string &path, HttpJsonHandler *handler,
+                HttpMethod method = GET_METHOD);
+
+        /**
+         * add a build-in service, it can get some inner infos in ehttp
+         * Get Clients info : http://<ip>:<port>/_clients
+         */
+        int add_buildin_mappings();
 
         void add_bind_ip(std::string ip);
 
@@ -89,8 +108,11 @@ class HttpServer {
         void set_max_events(int me);
         
         void set_port(int port);
+        int set_client_max_idle_time(int sec);
     private:
-        HttpEpollWatcher http_handler;
+        HttpEpollWatcher *_http_watcher;
+        std::map<std::string, Resource> *_resource_map;
+        std::vector<HttpJsonHandler *>_buildin_jhs;
         EpollSocket epoll_socket;
         int _backlog;
         int _max_events;

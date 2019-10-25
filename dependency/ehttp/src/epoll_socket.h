@@ -25,16 +25,20 @@
 #define READ_CONTINUE 1
 #define READ_CLOSE -1
 
-#define CHECK_RET(ret, msg, args...) if (ret != 0) { \
-    LOG_ERROR(msg, args); \
-    return ret; \
-} \
+#define CONTEXT_READING 1
+#define CONTEXT_READ_OVER 2
 
 class EpollContext {
     public:
+        EpollContext();
+        std::string to_string();
+
+        long long _id;
         void *ptr;
         int fd;
+        time_t _last_interact_time; // unit is second
         std::string client_ip;
+        int _ctx_status;
 };
 
 typedef void (*ScheduleHandlerPtr)();
@@ -56,7 +60,6 @@ class EpollSocketWatcher {
 
 };
 
-
 enum EpollSocketStatus {
     S_RUN = 0,
     S_REJECT_CONN = 1,
@@ -65,17 +68,13 @@ enum EpollSocketStatus {
 
 class EpollSocket {
     private:
-        int setNonblocking(int fd);
+        int set_nonblocking(int fd);
 
         int accept_socket(int sockfd, std::string &client_ip);
 
         int bind_on(unsigned int ip);
 
         int listen_on();
-
-        int handle_accept_event(int &epollfd, epoll_event &event, EpollSocketWatcher &socket_watcher);
-
-        int handle_writeable_event(int &epollfd, epoll_event &event, EpollSocketWatcher &socket_watcher);
 
         int close_and_release(epoll_event &event);
 
@@ -87,8 +86,6 @@ class EpollSocket {
 
         int add_listen_sock_to_epoll();
 
-        int handle_event(epoll_event &e);
-
         int start_event_loop();
 
         std::vector<std::string> _bind_ips;
@@ -99,6 +96,8 @@ class EpollSocket {
         std::set<int> _listen_sockets;
         pthread_mutex_t _client_lock;
         volatile int _clients;
+        std::map<long long, EpollContext *> _eclients;
+        int _max_idle_sec;
         
         ThreadPool *_thread_pool;
         bool _use_default_tp;
@@ -109,7 +108,11 @@ class EpollSocket {
        
          ~EpollSocket();
         
+        int multi_thread_handle_read_event(epoll_event &e);
         int handle_readable_event(epoll_event &event);
+        int handle_accept_event(int &epollfd, epoll_event &event, EpollSocketWatcher &socket_watcher);
+        int handle_writeable_event(int &epollfd, epoll_event &event, EpollSocketWatcher &socket_watcher);
+        int handle_event(epoll_event &e);
 
         int start_epoll();
         
@@ -125,9 +128,19 @@ class EpollSocket {
 
         void set_max_events(int max_events);
 
-        void set_schedule(ScheduleHandlerPtr h);
+        //void set_schedule(ScheduleHandlerPtr h);
+        int set_client_max_idle_time(int sec);
 
         void add_bind_ip(std::string ip);
+        int get_clients_info(std::stringstream &ss);
+
+        std::map<long long, EpollContext *> get_clients();
+        EpollContext *create_client(int conn_sock, const std::string &client_ip);
+        int add_client(EpollContext *ctx);
+        int remove_client(EpollContext *ctx);
+        int update_interact_time(EpollContext *ctx, time_t t);
+        int clear_idle_clients();
+
 };
 
 struct TaskData {

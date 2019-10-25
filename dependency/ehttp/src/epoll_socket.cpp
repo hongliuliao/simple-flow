@@ -8,6 +8,7 @@
 #include <climits>
 #include <cstdio>
 #include <cerrno>
+#include <sstream>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
@@ -16,9 +17,29 @@
 #include <sys/fcntl.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
+#include <signal.h>
+
+#include "json/json.h"
 
 #include "simple_log.h"
 #include "epoll_socket.h"
+
+static long long g_client_id = 0;
+
+EpollContext::EpollContext() {
+    fd = -1;
+    _last_interact_time = 0;
+    _ctx_status = 0;
+    _id = -1;
+}
+
+std::string EpollContext::to_string() {
+    Json::Value root;
+    root["fd"] = fd;
+    root["idle"] = (long long)time(NULL) - _last_interact_time;
+    Json::FastWriter writer;
+    return writer.write(root);
+}
 
 EpollSocket::EpollSocket() {
     _thread_pool = NULL;
@@ -26,6 +47,8 @@ EpollSocket::EpollSocket() {
     _status = S_RUN;
     _epollfd = -1;
     _clients = 0;
+    _max_idle_sec = 0;
+    _watcher = NULL;
     pthread_mutex_init(&_client_lock, NULL);
 }
 
@@ -36,7 +59,7 @@ EpollSocket::~EpollSocket() {
     }
 }
 
-int EpollSocket::setNonblocking(int fd) {
+int EpollSocket::set_nonblocking(int fd) {
     int flags;
 
     if (-1 == (flags = fcntl(fd, F_GETFL, 0)))
@@ -109,6 +132,24 @@ int EpollSocket::accept_socket(int sockfd, std::string &client_ip) {
     return new_fd;
 }
 
+int EpollSocket::add_client(EpollContext *ctx) {
+    pthread_mutex_lock(&_client_lock);
+    _clients++;
+    _eclients[ctx->_id] = ctx;
+    pthread_mutex_unlock(&_client_lock);
+    return 0;
+}
+
+EpollContext *EpollSocket::create_client(int conn_sock, const std::string &client_ip) {
+    EpollContext *epoll_context = new EpollContext();
+    epoll_context->fd = conn_sock;
+    epoll_context->client_ip = client_ip;
+    epoll_context->_last_interact_time = time(NULL);
+    g_client_id++;
+    epoll_context->_id = g_client_id;
+    return epoll_context;
+}
+
 int EpollSocket::handle_accept_event(int &epollfd, epoll_event &event, EpollSocketWatcher &socket_handler) {
     int sockfd = event.data.fd;
 
@@ -117,17 +158,12 @@ int EpollSocket::handle_accept_event(int &epollfd, epoll_event &event, EpollSock
     if (conn_sock == -1) {
         return -1;
     }
-    setNonblocking(conn_sock);
-
-    pthread_mutex_lock(&_client_lock);
-    _clients++;
-    pthread_mutex_unlock(&_client_lock);
+    set_nonblocking(conn_sock);
+    EpollContext *epoll_context = create_client(conn_sock, client_ip);
+    
     LOG_DEBUG("get accept socket which listen fd:%d, conn_sock_fd:%d", sockfd, conn_sock);
 
-    EpollContext *epoll_context = new EpollContext();
-    epoll_context->fd = conn_sock;
-    epoll_context->client_ip = client_ip;
-
+    add_client(epoll_context);
     socket_handler.on_accept(*epoll_context);
 
     struct epoll_event conn_sock_ev;
@@ -136,7 +172,7 @@ int EpollSocket::handle_accept_event(int &epollfd, epoll_event &event, EpollSock
 
     if (epoll_ctl(_epollfd, EPOLL_CTL_ADD, conn_sock, &conn_sock_ev) == -1) {
         LOG_ERROR("epoll_ctl: conn_sock:%s", strerror(errno));
-        close_and_release(event);
+        close_and_release(conn_sock_ev);
         return -1;
     }
     return 0;
@@ -145,33 +181,49 @@ int EpollSocket::handle_accept_event(int &epollfd, epoll_event &event, EpollSock
 void read_func(void *data) {
     TaskData *td = (TaskData *) data;
     td->es->handle_readable_event(td->event);
+
+    EpollContext *hc = (EpollContext *) td->event.data.ptr;
+    if (hc != NULL) {
+        hc->_ctx_status = CONTEXT_READ_OVER;
+    }
     delete td;
 }
 
 int EpollSocket::handle_readable_event(epoll_event &event) {
     EpollContext *epoll_context = (EpollContext *) event.data.ptr;
+    if (epoll_context == NULL) {
+        LOG_WARN("Get context from read event fail!");
+        return -1;
+    }
     int fd = epoll_context->fd;
 
     int ret = _watcher->on_readable(_epollfd, event);
     if (ret == READ_CLOSE) {
         return close_and_release(event);
     }
+
     if (ret == READ_CONTINUE) {
         event.events = EPOLLIN | EPOLLONESHOT;
-        epoll_ctl(_epollfd, EPOLL_CTL_MOD, fd, &event);
+        ret = epoll_ctl(_epollfd, EPOLL_CTL_MOD, fd, &event);
     } else if (ret == READ_OVER) { // READ_OVER
         event.events = EPOLLOUT | EPOLLONESHOT;
-        epoll_ctl(_epollfd, EPOLL_CTL_MOD, fd, &event);
+        ret = epoll_ctl(_epollfd, EPOLL_CTL_MOD, fd, &event);
     } else {
         LOG_ERROR("unkonw read ret:%d", ret);
     }
-    return 0;
+    return ret;
 }
 
 int EpollSocket::handle_writeable_event(int &epollfd, epoll_event &event, EpollSocketWatcher &socket_handler) {
     EpollContext *epoll_context = (EpollContext *) event.data.ptr;
+    if (epoll_context == NULL) {
+        LOG_WARN("Get epoll context fail in write event!");
+        return -1;
+    }
     int fd = epoll_context->fd;
     LOG_DEBUG("start write data");
+
+    update_interact_time(epoll_context, time(NULL));
 
     int ret = socket_handler.on_writeable(*epoll_context);
     if(ret == WRITE_CONN_CLOSE) {
@@ -194,6 +246,14 @@ int EpollSocket::handle_writeable_event(int &epollfd, epoll_event &event, EpollS
     return 0;
 }
 
+int EpollSocket::update_interact_time(EpollContext *ctx, time_t t) {
+    pthread_mutex_lock(&_client_lock);
+    ctx->_last_interact_time = t;
+    pthread_mutex_unlock(&_client_lock);
+    return 0;
+}
+
+
 void EpollSocket::set_thread_pool(ThreadPool *tp) {
     this->_thread_pool = tp;
     _use_default_tp = false;
@@ -213,6 +273,11 @@ void EpollSocket::set_backlog(int backlog) {
 
 void EpollSocket::set_max_events(int me) {
     _max_events = me;
+}
+
+int EpollSocket::set_client_max_idle_time(int sec) {
+    _max_idle_sec = sec;
+    return 0;
 }
 
 int EpollSocket::init_default_tp() {
@@ -238,42 +303,56 @@ int EpollSocket::add_listen_sock_to_epoll() {
     return 0;
 }
 
+int EpollSocket::multi_thread_handle_read_event(epoll_event &e) {
+    // handle readable async
+    LOG_DEBUG("start handle readable event");
+    EpollContext *hc = (EpollContext *) e.data.ptr;
+    hc->_ctx_status = CONTEXT_READING;
+
+    update_interact_time(hc, time(NULL));
+
+    TaskData *tdata = new TaskData();
+    tdata->event = e;
+    tdata->es = this;
+
+    Task *task = new Task(read_func, tdata);
+    int ret = _thread_pool->add_task(task);
+    if (ret != 0) {
+        LOG_WARN("add read task fail:%d, we will close connect.", ret);
+        close_and_release(e);
+        delete tdata;
+        delete task;
+    }
+    return 0;
+}
+
 int EpollSocket::handle_event(epoll_event &e) {
+    int ret = 0;
     if (_listen_sockets.count(e.data.fd)) {
-        // accept connection
-        if (_status == S_RUN) {
-            this->handle_accept_event(_epollfd, e, *_watcher);
-        } else {
-            LOG_INFO("current status:%d, not accept new connect", _status);
+        if (_status != S_RUN) {
+            LOG_WARN("current status:%d, not accept new connect", _status);
             pthread_mutex_lock(&_client_lock);
             if (_clients == 0 && _status == S_REJECT_CONN) {
                 _status = S_STOP;
                 LOG_INFO("client is empty and ready for stop server!");
             }
             pthread_mutex_unlock(&_client_lock);
-        }
+        } 
+        // accept connection
+        ret = this->handle_accept_event(_epollfd, e, *_watcher);
     } else if (e.events & EPOLLIN) {
-        // handle readable async
-        LOG_DEBUG("start handle readable event");
-        TaskData *tdata = new TaskData();
-        tdata->event = e;
-        tdata->es = this;
-
-        Task *task = new Task(read_func, tdata);
-        int ret = _thread_pool->add_task(task);
-        if (ret != 0) {
-            LOG_WARN("add read task fail:%d, we will close connect.", ret);
-            close_and_release(e);
-            delete tdata;
-            delete task;
-        }
+        // readable
+        ret = this->multi_thread_handle_read_event(e);
     } else if (e.events & EPOLLOUT) {
         // writeable
-        this->handle_writeable_event(_epollfd, e, *_watcher);
+        if (_watcher != NULL) {
+            ret = this->handle_writeable_event(_epollfd, e, *_watcher);
+        }
     } else {
         LOG_INFO("unkonw events :%d", e.events);
+        ret = -1;
     }
-    return 0;
+    return ret;
 }
 
 int EpollSocket::create_epoll() {
@@ -291,35 +370,94 @@ int EpollSocket::init_tp() {
     if (_thread_pool == NULL) {
         init_default_tp();
     }
-    int ret = _thread_pool->start();
+    int ret = _thread_pool->start_threadpool();
     return ret;
 }
 
+int EpollSocket::clear_idle_clients() {
+    if (_max_idle_sec <= 0) {
+        return 0;
+    }
+    if (_eclients.empty()) {
+        return 0;
+    }
+    time_t timeout_ts = time(NULL) - _max_idle_sec;
+
+    std::vector<epoll_event> remove_evs;
+    pthread_mutex_lock(&_client_lock);
+    std::map<long long, EpollContext *>::iterator it = _eclients.begin();
+    for (; it != _eclients.end(); it++) {
+         //long long id = it->first;
+         EpollContext *ctx = it->second;
+         if (ctx->_last_interact_time <= timeout_ts && 
+                 ctx->_ctx_status != CONTEXT_READING) {
+             LOG_DEBUG("find idle client fd:%d", ctx->fd);
+             epoll_event e;
+             memset(&e, 0, sizeof(e));
+             e.data.ptr = ctx;
+             remove_evs.push_back(e);
+         } else {
+             LOG_DEBUG("find idle client but is reading, skip it!");
+         }
+    }
+    pthread_mutex_unlock(&_client_lock);
+
+    int cnt = 0;
+    for (size_t i = 0; i < remove_evs.size(); i++) {
+        close_and_release(remove_evs[i]);
+        cnt++;
+    }
+    if (cnt > 0) {
+        LOG_INFO("find idle clients cnt:%d", cnt);
+    }
+    return cnt;
+}
+
+int EpollSocket::get_clients_info(std::stringstream &ss) {
+    Json::FastWriter writer;
+    Json::Value root;
+    std::map<long long, EpollContext *>::iterator it = _eclients.begin();
+    int i = 0;
+    for (; it != _eclients.end(); it++) {
+        root[i]["fd"] = (*it).second->fd;
+        root[i]["last_interact_time"] = (long long)(*it).second->_last_interact_time;
+        i++;
+    }
+    ss << writer.write(root);
+    return 0;
+}
+
 int EpollSocket::start_event_loop() {
+    int timeout_ms = 1000;
     epoll_event *events = new epoll_event[_max_events];
+    int ret = 0;
     while (_status != S_STOP) {
-        int fds_num = epoll_wait(_epollfd, events, _max_events, -1);
+        int fds_num = epoll_wait(_epollfd, events, _max_events, timeout_ms);
         if (fds_num == -1) {
             if (errno == EINTR) { /*The call was interrupted by a signal handler*/
                 continue;
             }
             LOG_ERROR("epoll_wait error:%s", strerror(errno));
+            ret = -1;
             break;
         }
-
         for (int i = 0; i < fds_num; i++) {
             this->handle_event(events[i]);
         }
+        clear_idle_clients();
     }
     LOG_INFO("epoll wait loop stop ...");
     if (events != NULL) {
         delete[] events;
         events = NULL;
     }
-    return 0;
+    return ret;
 }
 
 int EpollSocket::start_epoll() {
+    /* Ignore broken pipe signal. */
+    signal(SIGPIPE, SIG_IGN);
+
     int ret = init_tp();
     CHECK_RET(ret, "thread pool start error:%d", ret);
 
@@ -341,6 +479,14 @@ int EpollSocket::stop_epoll() {
     return 0;
 }
 
+int EpollSocket::remove_client(EpollContext *ctx) {
+    pthread_mutex_lock(&_client_lock);
+    _clients--;
+    _eclients.erase(ctx->_id);
+    pthread_mutex_unlock(&_client_lock);
+    return 0;
+}
+
 int EpollSocket::close_and_release(epoll_event &epoll_event) {
     if (epoll_event.data.ptr == NULL) {
         return 0;
@@ -348,24 +494,29 @@ int EpollSocket::close_and_release(epoll_event &epoll_event) {
     LOG_DEBUG("connect close");
 
     EpollContext *hc = (EpollContext *) epoll_event.data.ptr;
-    _watcher->on_close(*hc);
+    if (_watcher) {
+        _watcher->on_close(*hc);
+    }
 
     int fd = hc->fd;
     epoll_event.events = EPOLLIN | EPOLLOUT;
-    epoll_ctl(_epollfd, EPOLL_CTL_DEL, fd, &epoll_event);
-
-    delete (EpollContext *) epoll_event.data.ptr;
-    epoll_event.data.ptr = NULL;
-
-    int ret = close(fd);
-
-    pthread_mutex_lock(&_client_lock);
-    _clients--;
+    if (_epollfd > 0) {
+        epoll_ctl(_epollfd, EPOLL_CTL_DEL, fd, &epoll_event);
+    }
+    
+    remove_client(hc);
     if (_clients == 0 && _status == S_REJECT_CONN) {
         _status = S_STOP;
         LOG_INFO("client is empty and ready for stop server!");
     }
-    pthread_mutex_unlock(&_client_lock);
+
+    delete (EpollContext *) epoll_event.data.ptr;
+    epoll_event.data.ptr = NULL;
+
+    int ret = 0;
+    if (fd > 0) {
+        ret = close(fd);
+    }
 
     LOG_DEBUG("connect close complete which fd:%d, ret:%d", fd, ret);
     return ret;
@@ -374,3 +525,12 @@ int EpollSocket::close_and_release(epoll_event &epoll_event) {
 void EpollSocket::add_bind_ip(std::string ip) {
     _bind_ips.push_back(ip);
 }
+
+std::map<long long, EpollContext *> EpollSocket::get_clients() {
+    std::map<long long, EpollContext *> ret;
+    pthread_mutex_lock(&_client_lock);
+    ret = _eclients;
+    pthread_mutex_unlock(&_client_lock);
+    return ret;
+}
+
